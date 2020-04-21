@@ -1,20 +1,24 @@
 package models;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public class User implements Serializable{
 	
 	private String username;
 	private String password;
+	private List<String> inbox = new ArrayList<>();
 	
 	public User() {
 		
 	}	
 
-	public User(String username, String password) {
+	public User(String username, String password, List<String> inbox) {
 		super();
 		this.username = username;
 		this.password = password;
+		this.inbox = inbox;
 	}
 
 	public String getUsername() {
@@ -32,8 +36,14 @@ public class User implements Serializable{
 	public void setPassword(String password) {
 		this.password = password;
 	}
+	
+	public List<String> getInbox() {
+		return inbox;
+	}
 
-
+	public void setInbox(List<String> inbox) {
+		this.inbox = inbox;
+	}
 
 	@Override
 	public String toString() {

@@ -12,7 +12,9 @@ class App extends React.Component {
     messageUser: '',
     isSigningUp: false,
     isLoggedIn: false,
-    loggedUser: ''
+    loggedUser: '',
+    users: [],
+    sendToUser: ''
   }
 
   componentDidMount() {
@@ -65,8 +67,10 @@ class App extends React.Component {
 
     axios.post("rest/chat/users/register", user)
       .then(res => {
-        alert('Uspesna registracija')
-        this.setState({isSigningUp: false})
+        alert('Uspesna registracija');
+        const oldUsers = [...this.state.users];
+        oldUsers.push(user.username);
+        this.setState({ isSigningUp: false, users: oldUsers })
       })
       .catch(err => alert("Greska pri registraciji/username vec postoji"));
   }
@@ -91,7 +95,7 @@ class App extends React.Component {
     axios.delete("rest/chat/users/loggedIn/" + this.state.loggedUser)
       .then(res => {
         console.log(res);
-        this.setState({isLoggedIn: false, loggedUser: ''})
+        this.setState({ isLoggedIn: false, loggedUser: '' })
       })
       .catch(err => console.log(err))
   }
@@ -105,6 +109,39 @@ class App extends React.Component {
   onGetRegisteredUsersHandler = () => {
     axios.get("rest/chat/users/registered")
       .then(res => alert("Success, proveriti consolu u WildFly"))
+      .catch(err => console.log(err));
+  }
+
+  onSendMessageToAll = (msg) => {
+
+    const message = {
+      message: msg
+    }
+
+    console.log(msg);
+
+    axios.post("rest/chat/messages/all", message)
+      .then(res => console.log(res))
+      .catch(err => console.log(err))
+    this.setState({messageAll: ''})
+  }
+
+  onSendMessageToUser = (msg, to) => {
+    
+    const message = {
+      message: msg,
+      sendTo: to
+    }
+
+    axios.post("rest/chat/messages/user", message)
+      .then(res => console.log(res))
+      .catch(err => console.log(err));
+
+  }
+
+  onGetInboxHandler = () => {
+    axios.get("rest/chat/messages/" + this.state.loggedUser)
+      .then(res => alert("Success, proveriti konsolu."))
       .catch(err => console.log(err));
   }
 
@@ -187,27 +224,37 @@ class App extends React.Component {
               <label htmlFor="messageAll">Send message to all users</label>
             </div>
             <div className="row">
-              <textarea name="messageAll" id="messageAll" cols="30" rows="3"></textarea>
+              <textarea
+                name="messageAll"
+                id="messageAll"
+                cols="30"
+                rows="3"
+                value={this.state.messageAll}
+                onChange={(e) => this.setState({messageAll: e.target.value})}></textarea>
             </div>
             <div className="row">
-              <button className="btn btn-primary" style={{ margin: '10px 0px' }}>Send</button>
+              <button className="btn btn-primary" style={{ margin: '10px 0px' }} onClick={() => this.onSendMessageToAll(this.state.messageAll)}>Send</button>
             </div>
           </div>
 
           <div className="col">
             <div className="row">
               <label htmlFor="selectUser">Send message to user:</label>
-              <select name="selectUser" id="selectUser" style={{ margin: '0px 10px 10px 10px' }}>
-                <option>Test</option>
+              <select name="selectUser" id="selectUser" style={{ margin: '0px 10px 10px 10px' }} value={this.state.sendToUser}
+              onChange={(e) => this.setState({sendToUser: e.target.value})} >
+                <option value="" hidden></option>
+                {this.state.users.map(user => {
+                  return <option key={user} value={user}>{user}</option>;
+                })}
               </select>
             </div>
 
             <div className="row">
-              <textarea name="messageUser" id="messageUser" cols="30" rows="3"></textarea>
+              <textarea name="messageUser" id="messageUser" cols="30" rows="3" value={this.state.messageUser} onChange={(e) => this.setState({messageUser: e.target.value})}></textarea>
             </div>
 
             <div className="row">
-              <button className="btn btn-primary" style={{ margin: '10px 0px' }}>Send</button>
+              <button className="btn btn-primary" style={{ margin: '10px 0px' }} onClick={() => this.onSendMessageToUser(this.state.messageUser, this.state.sendToUser)}>Send</button>
             </div>
           </div>
         </div>
@@ -216,7 +263,7 @@ class App extends React.Component {
 
         <div className="row">
           <div className="col">
-            {this.state.isLoggedIn ? <button className="btn btn-primary">Show all my messages</button> : null}
+            {this.state.isLoggedIn ? <button className="btn btn-primary" onClick={this.onGetInboxHandler}>Show all my messages</button> : null}
           </div>
 
           <div className="col">

@@ -3,17 +3,9 @@ package beans;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
-import javax.jms.ConnectionFactory;
-import javax.jms.Queue;
-import javax.jms.QueueConnection;
-import javax.jms.QueueSender;
-import javax.jms.QueueSession;
-import javax.jms.Session;
-import javax.jms.TextMessage;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -41,21 +33,67 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	private List<User> loggedIn = new ArrayList<>();
 
 
-	@GET
-	@Path("/test")
-	@Produces(MediaType.TEXT_PLAIN)
-	public String test() {
-		return "OK";
-	}
+//	@GET
+//	@Path("/test")
+//	@Produces(MediaType.TEXT_PLAIN)
+//	public String test() {
+//		return "OK";
+//	}
 
 	@POST
-	@Path("/post/{text}")
+	@Path("/messages/all")
 	@Produces(MediaType.TEXT_PLAIN)
-	public String post(@PathParam("text") String text) {
-		System.out.println("Received message: " + text);
-		ws.echoTextMessage(text);
-		return "OK";
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response sendMessageToAll(Msg msg) {
+		
+		for(User u : users) {
+			System.out.println(u.getInbox());
+			u.getInbox().add(msg.message);
+		}
+		System.out.println("Poslao poruku svim korisnicima: " + msg.message);
+		ws.echoTextMessage(msg.message);
+		return Response.status(200).build();
 	}
+	
+	@POST
+	@Path("/messages/user")
+	@Produces(MediaType.TEXT_PLAIN)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response sendMessageToUser(Msg msg) {
+				
+		for(User u : users) {
+			if(msg.sendTo.equals(u.getUsername())){
+				u.getInbox().add(msg.message);
+				System.out.println("Poruka " + msg.message + " poslata korisniku " + u.getUsername());
+				return Response.status(200).build();
+			}
+		}
+		
+		System.out.println("Nije pronasao korisnika");
+		return Response.status(400).build();
+	}
+	
+	@GET
+	@Path("/messages/{user}")
+	@Produces(MediaType.TEXT_PLAIN)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response getAllMessages(@PathParam("user") String user) {
+		
+		for(User u : users) {
+			if(user.equals(u.getUsername())) {
+				System.out.println("Inbox od korisnika " + user);
+				for(String msg : u.getInbox()) {
+					System.out.println(msg);
+				}
+				return Response.status(200).build();
+			}
+		}
+		
+		System.out.println("Nije nasao korisnika");
+		return Response.status(400).build();
+	}
+	
+	
 	
 	@POST
 	@Path("/users/register")
@@ -99,8 +137,6 @@ public class ChatBean implements ChatRemote, ChatLocal {
 					}
 					this.loggedIn.addAll(toBeAdded);
 				}
-				
-				System.out.println("ZASTO EROR");
 				
 				System.out.println("Korisnik " + user.getUsername() + " se uspesno logovao");				
 				return Response.status(200).build();
@@ -149,6 +185,9 @@ public class ChatBean implements ChatRemote, ChatLocal {
 		}
 	}
 	
-	
+	static public class Msg {
+		public String message;
+		public String sendTo;
+	}
 	
 }
