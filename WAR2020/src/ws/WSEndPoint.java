@@ -12,12 +12,13 @@ import javax.websocket.OnError;
 import javax.websocket.OnMessage;
 import javax.websocket.OnOpen;
 import javax.websocket.Session;
+import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
 import beans.ChatLocal;
 
 @Singleton
-@ServerEndpoint("/ws")
+@ServerEndpoint("/ws/{user}")
 @LocalBean
 public class WSEndPoint {
 	static List<Session> sessions = new ArrayList<Session>();
@@ -26,15 +27,24 @@ public class WSEndPoint {
 	ChatLocal chat;
 	
 	@OnOpen
-	public void onOpen(Session session) {
+	public void onOpen(Session session, @PathParam("user") String user) {
 		if (!sessions.contains(session)) {
 			sessions.add(session);
 		}
+		
+		try {
+	        for (Session s : sessions) {
+        		s.getBasicRemote().sendText("LOGIN:" + user);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		
 	}
 	
 	@OnMessage
 	public void echoTextMessage(String msg) {
-//		System.out.println("ChatBean returned: " + chat.test());
 		
 		try {
 	        for (Session s : sessions) {
@@ -47,8 +57,21 @@ public class WSEndPoint {
 	}
 
 	@OnClose
-	public void close(Session session) {
+	public void close(Session session, @PathParam("user") String user) {
+		
+		System.out.println("ALOOOOOOOOOOO");
+		
+		try {
+	        for (Session s : sessions) {
+        		s.getBasicRemote().sendText("LOGOUT:" + user);
+        		System.out.println("POSLAO PORUKU");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		sessions.remove(session);
+		
 	}
 	
 	@OnError

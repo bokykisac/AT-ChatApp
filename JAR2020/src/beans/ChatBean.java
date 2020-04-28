@@ -116,7 +116,6 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	@POST
 	@Path("/users/login")
 	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.TEXT_PLAIN)
 	public Response login(User user) {
 		
 		System.out.println(loggedIn.size());
@@ -139,7 +138,7 @@ public class ChatBean implements ChatRemote, ChatLocal {
 				}
 				
 				System.out.println("Korisnik " + user.getUsername() + " se uspesno logovao");				
-				return Response.status(200).build();
+				return Response.status(200).entity(this.loggedIn).build();
 			}
 		}
 		
@@ -165,13 +164,15 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	
 	@GET
 	@Path("/users/loggedIn")
-	public void getLoggedUsers() {
+	public Response getLoggedUsers() {
 		
 		System.out.println("Ukupno logovanih korisnika: " + loggedIn.size());
 		
 		for(User u : loggedIn) {
 			System.out.println("LOGOVAN: " + u.getUsername());
 		}
+		
+		return Response.status(200).entity(this.loggedIn).build();
 	}
 	
 	@GET
