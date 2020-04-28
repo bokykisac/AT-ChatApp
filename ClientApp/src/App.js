@@ -187,13 +187,14 @@ class App extends React.Component {
   onSendMessageToAll = (msg) => {
 
     const message = {
+      sender: this.state.loggedUser,
       message: msg
     }
 
-    console.log(msg);
+    console.log(message);
 
     axios.post("rest/chat/messages/all", message)
-      .then(res => console.log(res))
+      .then(res => alert("Poruka poslata svim registrovanim korisnicima"))
       .catch(err => console.log(err))
     this.setState({ messageAll: '' })
   }
@@ -202,12 +203,17 @@ class App extends React.Component {
 
     const message = {
       message: msg,
-      sendTo: to
+      reciver: to,
+      sender: this.state.loggedUser
     }
 
+    console.log(message);
+
     axios.post("rest/chat/messages/user", message)
-      .then(res => console.log(res))
+      .then(res => alert("Poruka poslata korisniku " + to))
       .catch(err => console.log(err));
+
+      this.setState({messageUser: ''});
 
   }
 

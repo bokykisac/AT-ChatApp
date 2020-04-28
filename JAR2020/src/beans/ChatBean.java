@@ -1,6 +1,7 @@
 package beans;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.ejb.EJB;
@@ -16,6 +17,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import models.Message;
 import models.User;
 import ws.WSEndPoint;
 
@@ -31,6 +33,8 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	private List<User> users = new ArrayList<>();
 	
 	private List<User> loggedIn = new ArrayList<>();
+	
+	private List<Message> messages = new ArrayList<>();
 
 
 //	@GET
@@ -46,13 +50,27 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response sendMessageToAll(Msg msg) {
 		
+		User sender = null;
+		
 		for(User u : users) {
-			System.out.println(u.getInbox());
-			u.getInbox().add(msg.message);
+			if(u.getUsername().equals(msg.sender)) {
+				sender = u;
+			}
 		}
-		System.out.println("Poslao poruku svim korisnicima: " + msg.message);
-		ws.echoTextMessage(msg.message);
-		return Response.status(200).build();
+		
+		if(sender != null) {
+			for(User u : users) {
+				Message message = new Message(u, sender, new Date(), "Poruka", msg.message);
+				this.messages.add(message);
+			}
+			System.out.println("Poslao poruku svim korisnicima: " + msg.message);
+//			ws.echoTextMessage(msg.message);
+			return Response.status(200).build();
+		}
+		else {
+			System.out.println("Doslo je do greske prilikom slanja poruke");
+			return Response.status(400).build();
+		}
 	}
 	
 	@POST
@@ -60,17 +78,30 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	@Produces(MediaType.TEXT_PLAIN)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response sendMessageToUser(Msg msg) {
-				
+		
+		User sender = null;
+		
 		for(User u : users) {
-			if(msg.sendTo.equals(u.getUsername())){
-				u.getInbox().add(msg.message);
-				System.out.println("Poruka " + msg.message + " poslata korisniku " + u.getUsername());
-				return Response.status(200).build();
+			if(u.getUsername().equals(msg.sender)) {
+				sender = u;
 			}
 		}
 		
-		System.out.println("Nije pronasao korisnika");
-		return Response.status(400).build();
+		if(sender != null) {
+			for(User reciver : loggedIn) {
+				if(msg.reciver.equals(reciver.getUsername())) {
+					Message message = new Message(reciver, sender, new Date(), "Privatna poruka", msg.message);
+					this.messages.add(message);
+					System.out.println("Poruka poslata korisniku " + reciver.getUsername());
+					return Response.status(200).build();
+				}
+			}
+			System.out.println("Neuspesno slanje poruke.");
+			return Response.status(400).build();
+		}else {
+			System.out.println("Nije pronasao korisnika");
+			return Response.status(400).build();
+		}
 	}
 	
 	@GET
@@ -79,18 +110,15 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response getAllMessages(@PathParam("user") String user) {
 		
-		for(User u : users) {
-			if(user.equals(u.getUsername())) {
-				System.out.println("Inbox od korisnika " + user);
-				for(String msg : u.getInbox()) {
-					System.out.println(msg);
-				}
-				return Response.status(200).build();
+		System.out.println("Inbox od korisnika " + user);
+		
+		for(Message m : messages) {
+			if(user.equals(m.getReciver().getUsername())) {
+				System.out.println(m.getMessage());
 			}
 		}
-		
-		System.out.println("Nije nasao korisnika");
-		return Response.status(400).build();
+
+		return Response.status(200).build();
 	}
 	
 	
@@ -188,7 +216,8 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	
 	static public class Msg {
 		public String message;
-		public String sendTo;
+		public String reciver;
+		public String sender;
 	}
 	
 }

@@ -9,6 +9,7 @@ public class User implements Serializable{
 	private String username;
 	private String password;
 	private List<String> inbox = new ArrayList<>();
+	private Host host;
 	
 	public User() {
 		
@@ -43,6 +44,15 @@ public class User implements Serializable{
 
 	public void setInbox(List<String> inbox) {
 		this.inbox = inbox;
+	}
+	
+
+	public Host getHost() {
+		return host;
+	}
+
+	public void setHost(Host host) {
+		this.host = host;
 	}
 
 	@Override

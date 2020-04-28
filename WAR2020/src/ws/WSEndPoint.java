@@ -58,13 +58,10 @@ public class WSEndPoint {
 
 	@OnClose
 	public void close(Session session, @PathParam("user") String user) {
-		
-		System.out.println("ALOOOOOOOOOOO");
-		
+				
 		try {
 	        for (Session s : sessions) {
         		s.getBasicRemote().sendText("LOGOUT:" + user);
-        		System.out.println("POSLAO PORUKU");
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
