@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 import axios from './axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import moment from 'moment';
 
 class App extends React.Component {
 
@@ -15,30 +16,100 @@ class App extends React.Component {
     loggedUser: '',
     users: [],
     onlineUsers: [],
-    sendToUser: ''
+    sendToUser: '',
+    messages: [],
+    subjectAll: '',
+    subjectUser: ''
   }
 
   ws = null;
 
   componentDidMount() {
 
-    try {
-      // this.ws.onopen = (evt) => {
-      //   console.log(evt);
-      //   console.log('onopen: Socket Status: ' + this.ws.readyState + ' (open)');
-      // }
+    if(localStorage.getItem('user') !== null){
 
-      // this.ws.onmessage = (msg) => {
-      //   console.log(msg);
-      //   console.log('onmessage: Received: ' + msg.data);
-      // }
+      const user = {
+        username: localStorage.getItem('user'),
+        password: localStorage.getItem('password')
+      };
 
-      // this.ws.onclose = () => {
-      //   this.ws = null;
-      // }
+      axios.post("rest/chat/users/login", user)
+      .then(res => {
 
-    } catch (exception) {
-      console.log('Error' + exception);
+        localStorage.setItem('user', user.username);
+        localStorage.setItem('password', user.password);
+
+        this.ws = new WebSocket("ws://localhost:8080/WAR2020/ws/" + user.username);
+
+        this.ws.onopen = (evt) => {
+          console.log('onopen: Socket Status: ' + this.ws.readyState + ' (open)');
+
+
+          const users = res.data.map(user => {
+            return user.username;
+          })
+
+          this.setState({ onlineUsers: users });
+        }
+
+        this.ws.onmessage = (msg) => {
+          console.log('onmessage: Received: ' + msg.data);
+
+          if (msg.data.includes("LOGIN:")) {
+            const user = msg.data.substring(6);
+            console.log(`User ${user} is online.`);
+
+            for (let onlineUser of this.state.onlineUsers) {
+              if (onlineUser === user) {
+                return;
+              }
+            }
+
+            const users = [...this.state.onlineUsers];
+            users.push(user);
+            this.setState({ onlineUsers: users });
+          }
+
+
+
+          if (msg.data.includes("LOGOUT:")) {
+            const user = msg.data.substring(7);
+            console.log(`User ${user} logged off.`);
+
+            const users = [...this.state.onlineUsers];
+
+            const index = users.indexOf(user);
+
+            if (index > -1) {
+              users.splice(index, 1);
+            }
+            this.setState({ onlineUsers: users });
+          }
+
+        }
+
+        this.ws.onclose = (evt) => {
+
+          console.log(evt);
+
+          // const users = [...this.state.onlineUsers];
+
+          // const index = users.indexOf(this.state.loggedUser);
+          // if (index > -1) {
+          //   users.splice(index, 1);
+          //   console.log("NASAO");
+          // }
+
+          // this.setState({ onlineUsers: users });
+          this.onLogoutHandler();
+          console.log("Session closed");
+
+          this.ws = null;
+        }
+
+        this.setState({ isLoggedIn: true, loggedUser: user.username });
+      })
+      .catch(err => console.log(err));
     }
   }
 
@@ -81,12 +152,12 @@ class App extends React.Component {
     axios.post("rest/chat/users/login", user)
       .then(res => {
 
-        console.log(res);
+        localStorage.setItem('user', user.username);
+        localStorage.setItem('password', user.password);
 
         this.ws = new WebSocket("ws://localhost:8080/WAR2020/ws/" + user.username);
 
         this.ws.onopen = (evt) => {
-          console.log(evt);
           console.log('onopen: Socket Status: ' + this.ws.readyState + ' (open)');
 
 
@@ -94,16 +165,10 @@ class App extends React.Component {
             return user.username;
           })
 
-          this.setState({onlineUsers: users});
-
-          // users.push(user.username);
-          // console.log("DODAJE USERA ONOPEN");
-
-          // this.setState({ onlineUsers: users });
+          this.setState({ onlineUsers: users });
         }
 
         this.ws.onmessage = (msg) => {
-          console.log(msg);
           console.log('onmessage: Received: ' + msg.data);
 
           if (msg.data.includes("LOGIN:")) {
@@ -133,7 +198,6 @@ class App extends React.Component {
 
             if (index > -1) {
               users.splice(index, 1);
-              console.log("NASAO");
             }
             this.setState({ onlineUsers: users });
           }
@@ -153,6 +217,7 @@ class App extends React.Component {
           // }
 
           // this.setState({ onlineUsers: users });
+          this.onLogoutHandler();
           console.log("Session closed");
 
           this.ws = null;
@@ -166,7 +231,8 @@ class App extends React.Component {
   onLogoutHandler = () => {
     axios.delete("rest/chat/users/loggedIn/" + this.state.loggedUser)
       .then(res => {
-        //obrisi localstorage
+        localStorage.removeItem('user');
+        localStorage.removeItem('password');
         window.location.reload();
       })
       .catch(err => console.log(err))
@@ -188,7 +254,8 @@ class App extends React.Component {
 
     const message = {
       sender: this.state.loggedUser,
-      message: msg
+      message: msg,
+      subject: this.state.subjectAll
     }
 
     console.log(message);
@@ -196,7 +263,7 @@ class App extends React.Component {
     axios.post("rest/chat/messages/all", message)
       .then(res => alert("Poruka poslata svim registrovanim korisnicima"))
       .catch(err => console.log(err))
-    this.setState({ messageAll: '' })
+    this.setState({ messageAll: '', subjectAll: '' })
   }
 
   onSendMessageToUser = (msg, to) => {
@@ -204,7 +271,8 @@ class App extends React.Component {
     const message = {
       message: msg,
       reciver: to,
-      sender: this.state.loggedUser
+      sender: this.state.loggedUser,
+      subject: this.state.subjectUser
     }
 
     console.log(message);
@@ -213,13 +281,13 @@ class App extends React.Component {
       .then(res => alert("Poruka poslata korisniku " + to))
       .catch(err => console.log(err));
 
-      this.setState({messageUser: ''});
+    this.setState({ messageUser: '', subjectUser: '' });
 
   }
 
   onGetInboxHandler = () => {
     axios.get("rest/chat/messages/" + this.state.loggedUser)
-      .then(res => alert("Success, proveriti konsolu."))
+      .then(res => this.setState({ messages: res.data }))
       .catch(err => console.log(err));
   }
 
@@ -266,8 +334,13 @@ class App extends React.Component {
     );
 
     if (this.state.isLoggedIn) {
-      form = <div className="row">
-        <h5>Logovani ste kao <strong>{this.state.loggedUser}</strong></h5>
+      form = <div className="container">
+        <div className="row">
+          <h5>Logovani ste kao <strong>{this.state.loggedUser}</strong></h5>
+        </div>
+        <div className="row">
+          <button className="btn btn-danger" type="button" onClick={this.onLogoutHandler}>Logout</button>
+        </div>
       </div>;
     }
 
@@ -285,7 +358,7 @@ class App extends React.Component {
           </div>
           {this.state.isLoggedIn ? <div className="col-4">
             <h5>Online users</h5>
-            <ul className="list-group" style={{ height: '200px', overflowY: 'auto' }}>
+            <ul className="list-group" style={{ height: '100px', overflowY: 'auto' }}>
               {this.state.onlineUsers.map(user => {
                 return <li className="list-group-item" key={user}>{user}</li>
               })}
@@ -306,6 +379,10 @@ class App extends React.Component {
               <div className="col">
                 <button className="btn btn-primary" type="button" onClick={this.onGetRegisteredUsersHandler}>Get all registered users</button>
               </div>
+
+              <div className="col">
+                <button className="btn btn-primary" onClick={this.onGetInboxHandler}>Show all my messages</button>
+              </div>
             </div>
 
             <hr />
@@ -313,7 +390,15 @@ class App extends React.Component {
             <div className="row">
               <div className="col">
                 <div className="row">
-                  <label htmlFor="messageAll">Send message to all users</label>
+                  <label htmlFor="messageAll">Send message to all users:</label>
+                </div>
+                <div className="row">
+                  <input
+                    style={{ margin: '5px 0px' }}
+                    name="subjectAll"
+                    value={this.state.subjectAll}
+                    onChange={(e) => this.setState({ subjectAll: e.target.value })}
+                    placeholder="Subject" />
                 </div>
                 <div className="row">
                   <textarea
@@ -342,6 +427,15 @@ class App extends React.Component {
                 </div>
 
                 <div className="row">
+                  <input
+                    style={{ margin: '5px 0px' }}
+                    name="subjectUser"
+                    value={this.state.subjectUser}
+                    onChange={(e) => this.setState({ subjectUser: e.target.value })}
+                    placeholder="Subject" />
+                </div>
+
+                <div className="row">
                   <textarea name="messageUser" id="messageUser" cols="30" rows="3" value={this.state.messageUser} onChange={(e) => this.setState({ messageUser: e.target.value })}></textarea>
                 </div>
 
@@ -354,19 +448,28 @@ class App extends React.Component {
 
             <hr />
 
-            <div className="row">
-              <div className="col">
-                <button className="btn btn-primary" onClick={this.onGetInboxHandler}>Show all my messages</button>
-              </div>
+            {this.state.messages.length === 0 ? null :
+              this.state.messages.map(message => {
+                const date = new moment(message.msgDate).format("DD-MM-YYYY, hh:mm:ss");
+                return (
+                  <div className="card" key={message.msgDate}>
+                    <div className="card-body">
+                      <h5 className="card-title">FROM: {message.sender.username}</h5>
+                      <h6 className="card-subtitle mb-2 text-muted">Subject: {message.subject}</h6>
+                      <p className="card-text">{message.message}</p>
+                      <footer className="blockquote-footer">{date}</footer>
+                    </div>
+                  </div>
+                );
+              })
+            }
 
-              <div className="col">
-                <button className="btn btn-danger" type="button" onClick={this.onLogoutHandler}>Logout</button>
-              </div>
-            </div>
+
 
           </div>
           : null
         }
+
 
 
 

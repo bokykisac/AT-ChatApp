@@ -26,6 +26,7 @@ public class WSEndPoint {
 	@EJB
 	ChatLocal chat;
 	
+	
 	@OnOpen
 	public void onOpen(Session session, @PathParam("user") String user) {
 		if (!sessions.contains(session)) {

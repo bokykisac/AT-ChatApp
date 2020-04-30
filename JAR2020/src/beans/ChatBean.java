@@ -60,7 +60,7 @@ public class ChatBean implements ChatRemote, ChatLocal {
 		
 		if(sender != null) {
 			for(User u : users) {
-				Message message = new Message(u, sender, new Date(), "Poruka", msg.message);
+				Message message = new Message(u, sender, new Date(), msg.subject, msg.message);
 				this.messages.add(message);
 			}
 			System.out.println("Poslao poruku svim korisnicima: " + msg.message);
@@ -90,7 +90,7 @@ public class ChatBean implements ChatRemote, ChatLocal {
 		if(sender != null) {
 			for(User reciver : loggedIn) {
 				if(msg.reciver.equals(reciver.getUsername())) {
-					Message message = new Message(reciver, sender, new Date(), "Privatna poruka", msg.message);
+					Message message = new Message(reciver, sender, new Date(), msg.subject, msg.message);
 					this.messages.add(message);
 					System.out.println("Poruka poslata korisniku " + reciver.getUsername());
 					return Response.status(200).build();
@@ -106,19 +106,21 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	
 	@GET
 	@Path("/messages/{user}")
-	@Produces(MediaType.TEXT_PLAIN)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response getAllMessages(@PathParam("user") String user) {
 		
 		System.out.println("Inbox od korisnika " + user);
 		
+		List<Message> inbox = new ArrayList<>();
+		
 		for(Message m : messages) {
 			if(user.equals(m.getReciver().getUsername())) {
+				inbox.add(m);
 				System.out.println(m.getMessage());
 			}
 		}
 
-		return Response.status(200).build();
+		return Response.status(200).entity(inbox).build();
 	}
 	
 	
@@ -146,7 +148,12 @@ public class ChatBean implements ChatRemote, ChatLocal {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response login(User user) {
 		
-		System.out.println(loggedIn.size());
+		for(User logged : loggedIn) {
+			if(user.getUsername().equals(logged.getUsername())){
+				System.out.println("Korisnik " + user.getUsername() + " se uspesno logovao");				
+				return Response.status(200).entity(this.loggedIn).build();
+			}
+		}
 		
 		for(User u : users) {
 			if(user.getUsername().equals(u.getUsername()) && u.getPassword().equals(user.getPassword())) {
@@ -155,6 +162,12 @@ public class ChatBean implements ChatRemote, ChatLocal {
 					System.out.println("Dodao korisnika u listu logovanih korinsika");
 				}
 				else {
+					for(User logged : loggedIn) {
+						if(user.getUsername().equals(logged.getUsername())){
+							System.out.println("Korisnik " + user.getUsername() + " se uspesno logovao");				
+							return Response.status(200).entity(this.loggedIn).build();
+						}
+					}
 					List<User> toBeAdded = new ArrayList<>();
 					for(User loggedUser : loggedIn) {
 						if(!(user.getUsername().equals(loggedUser.getUsername()))){
@@ -218,6 +231,7 @@ public class ChatBean implements ChatRemote, ChatLocal {
 		public String message;
 		public String reciver;
 		public String sender;
+		public String subject;
 	}
 	
 }
